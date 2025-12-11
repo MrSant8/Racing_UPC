@@ -37,6 +37,9 @@ public:
 	Texture2D rick;
 	Texture2D carTexture;
 	PhysicEntity* car;
+	Texture2D frontCarTexture;
+	Texture2D frontCarTextureLeft;
+	Texture2D frontCarTextureRight;
 
 	uint32 bonus_fx;
 

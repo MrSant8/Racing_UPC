@@ -9,6 +9,8 @@
 
 // Textura global para las ruedas delanteras (para no tocar el .h)
 static Texture2D gFrontCarTexture;
+static Texture2D gFrontCarTextureLeft;
+static Texture2D gFrontCarTextureRight;
 
 // =====================================================================
 // CLASE BASE: cualquier cosa con física que se pueda dibujar
@@ -130,7 +132,83 @@ private:
         body->body->SetLinearVelocity(vel);
     }
 
-    // ---------------------- DIBUJAR COCHE ----------------------
+ // ---------------------- DIBUJAR COCHE ----------------------
+    //void DrawCar()
+    //{
+    //    int x, y;
+    //    body->GetPhysicPosition(x, y);
+    //    float angle = body->GetRotation();
+
+    //    // **********************************************
+    //    // * CORRECCIÓN: Declaración de variables *
+    //    // **********************************************
+    //    float angleDeg = angle * RAD2DEG; // <-- Identificador no declarado
+    //    float scale = 0.05f;             // <-- Identificador no declarado
+
+    //    // ---- CARROCERÍA ----
+    //    Rectangle srcBody = { 0, 0, (float)bodyTexture.width, (float)bodyTexture.height };
+    //    Rectangle dstBody = { (float)x, (float)y,
+    //                          bodyTexture.width * scale,
+    //                          bodyTexture.height * scale };
+    //    Vector2 originBody = { dstBody.width / 2.0f, dstBody.height / 2.0f };
+
+    //    DrawTexturePro(bodyTexture, srcBody, dstBody, originBody, angleDeg, WHITE);
+
+    //    // ---- RUEDAS DELANTERAS ----
+    //    float bodyW = dstBody.width;
+    //    float bodyH = dstBody.height;
+
+    //    // Offset desde el centro (ajústalo si hace falta)
+    //    float forwardOffset = bodyW * 0.00f;   // hacia la punta del coche
+    //    float halfTrack = bodyH * 0.00f;   // separación lateral de las ruedas
+
+    //    float cosA = cosf(angle);
+    //    float sinA = sinf(angle);
+
+    //    // Rueda delantera derecha (desde nuestro punto de vista superior)
+    //    Vector2 wheelRight; // <-- Identificador no declarado
+    //    wheelRight.x = x + cosA * forwardOffset - sinA * (-halfTrack);
+    //    wheelRight.y = y + sinA * forwardOffset + cosA * (-halfTrack);
+
+    //    // Rueda delantera izquierda
+    //    Vector2 wheelLeft; // <-- Identificador no declarado
+    //    wheelLeft.x = x + cosA * forwardOffset - sinA * (halfTrack);
+    //    wheelLeft.y = y + sinA * forwardOffset + cosA * (halfTrack);
+    //    // **********************************************
+
+    //    Rectangle srcWheel = { 0, 0, (float)frontTexture.width, (float)frontTexture.height };
+    //    Rectangle dstWheel = { 0, 0,
+    //                           frontTexture.width * scale,
+    //                           frontTexture.height * scale };
+    //    Vector2 originWheel = { dstWheel.width / 2.0f, dstWheel.height / 2.0f };
+
+    //    float wheelAngleDeg = angleDeg + steeringVisual; // ruedas giran más
+
+    //    // Seleccionar la textura de la rueda según el giro (basado en la respuesta anterior)
+    //    Texture2D currentWheelTexture;
+    //    if (steeringInput < 0.0f)
+    //    {
+    //        currentWheelTexture = gFrontCarTextureLeft;
+    //    }
+    //    else if (steeringInput > 0.0f)
+    //    {
+    //        currentWheelTexture = gFrontCarTextureRight;
+    //    }
+    //    else
+    //    {
+    //        currentWheelTexture = gFrontCarTexture;
+    //    }
+
+    //    // derecha
+    //    dstWheel.x = wheelRight.x;
+    //    dstWheel.y = wheelRight.y;
+    //    DrawTexturePro(currentWheelTexture, srcWheel, dstWheel, originWheel, wheelAngleDeg, WHITE);
+
+    //    // izquierda
+    //    dstWheel.x = wheelLeft.x;
+    //    dstWheel.y = wheelLeft.y;
+    //    DrawTexturePro(currentWheelTexture, srcWheel, dstWheel, originWheel, wheelAngleDeg, WHITE);
+    //}
     void DrawCar()
     {
         int x, y;
@@ -138,56 +216,54 @@ private:
         float angle = body->GetRotation();
         float angleDeg = angle * RAD2DEG;
 
-        float scale = 0.06f;
+        // Tamaño general del coche (ajusta este valor)
+        float scale = 0.05f;   // ahora mismo el tamaño que tienes en la captura
 
-        // ---- CARROCERÍA ----
+        // ===== 1. CARROCERÍA =====
         Rectangle srcBody = { 0, 0, (float)bodyTexture.width, (float)bodyTexture.height };
-        Rectangle dstBody = { (float)x, (float)y,
-                              bodyTexture.width * scale,
-                              bodyTexture.height * scale };
+        Rectangle dstBody = {
+            (float)x, (float)y,
+            bodyTexture.width * scale,
+            bodyTexture.height * scale
+        };
         Vector2 originBody = { dstBody.width / 2.0f, dstBody.height / 2.0f };
 
         DrawTexturePro(bodyTexture, srcBody, dstBody, originBody, angleDeg, WHITE);
 
-        // ---- RUEDAS DELANTERAS ----
-        float bodyW = dstBody.width;
-        float bodyH = dstBody.height;
+        // ===== 2. ELEGIR TEXTURA DEL MORRO =====
+        Texture2D* frontTex = &gFrontCarTexture; // recto por defecto
 
-        // Offset desde el centro (ajústalo si hace falta)
-        float forwardOffset = bodyW * 0.00f;   // hacia la punta del coche
-        float halfTrack = bodyH * 0.00f;   // separación lateral de las ruedas
+        if (steeringInput < -0.1f)       // A
+            frontTex = &gFrontCarTextureLeft;
+        else if (steeringInput > 0.1f)   // D
+            frontTex = &gFrontCarTextureRight;
+
+        // ===== 3. POSICIÓN DEL MORRO SOBRE LA CARROCERÍA =====
+        float bodyW = dstBody.width;
+
+        // cuánto sobresale el morro hacia delante (ajusta si hace falta)
+        float forwardOffset = bodyW * 0.00f;
 
         float cosA = cosf(angle);
         float sinA = sinf(angle);
 
-        // Rueda delantera derecha (desde nuestro punto de vista superior)
-        Vector2 wheelRight;
-        wheelRight.x = x + cosA * forwardOffset - sinA * (-halfTrack);
-        wheelRight.y = y + sinA * forwardOffset + cosA * (-halfTrack);
+        Vector2 frontPos;
+        frontPos.x = x + cosA * forwardOffset;
+        frontPos.y = y + sinA * forwardOffset;
 
-        // Rueda delantera izquierda
-        Vector2 wheelLeft;
-        wheelLeft.x = x + cosA * forwardOffset - sinA * (halfTrack);
-        wheelLeft.y = y + sinA * forwardOffset + cosA * (halfTrack);
+        // ===== 4. DIBUJAR EL MORRO CON LA MISMA ROTACIÓN =====
+        Rectangle srcFront = { 0, 0, (float)frontTex->width, (float)frontTex->height };
+        Rectangle dstFront = {
+            frontPos.x, frontPos.y,
+            frontTex->width * scale,
+            frontTex->height * scale
+        };
+        Vector2 originFront = { dstFront.width / 2.0f, dstFront.height / 2.0f };
 
-        Rectangle srcWheel = { 0, 0, (float)frontTexture.width, (float)frontTexture.height };
-        Rectangle dstWheel = { 0, 0,
-                               frontTexture.width * scale,
-                               frontTexture.height * scale };
-        Vector2 originWheel = { dstWheel.width / 2.0f, dstWheel.height / 2.0f };
-
-        float wheelAngleDeg = angleDeg + steeringVisual; // ruedas giran más
-
-        // derecha
-        dstWheel.x = wheelRight.x;
-        dstWheel.y = wheelRight.y;
-        DrawTexturePro(frontTexture, srcWheel, dstWheel, originWheel, wheelAngleDeg, WHITE);
-
-        // izquierda
-        dstWheel.x = wheelLeft.x;
-        dstWheel.y = wheelLeft.y;
-        DrawTexturePro(frontTexture, srcWheel, dstWheel, originWheel, wheelAngleDeg, WHITE);
+        // OJO: aquí usamos SOLO angleDeg, nada de steeringVisual
+        DrawTexturePro(*frontTex, srcFront, dstFront, originFront, angleDeg, WHITE);
     }
+
 
 private:
     Texture2D bodyTexture;
@@ -236,7 +312,15 @@ bool ModuleGame::Start()
     // Texturas del coche
     carTexture = LoadTexture("Assets/f1_body_car.png");
     gFrontCarTexture = LoadTexture("Assets/f1_front_car.png");
+    gFrontCarTextureLeft = LoadTexture("Assets/f1_front_car_Left.png");
+    gFrontCarTextureRight = LoadTexture("Assets/f1_front_car_Right.png");
 
+
+
+    if (gFrontCarTextureLeft.id == 0)
+        LOG("No se ha podido cargar Assets/f1_front_car_Right.png");
+    if (gFrontCarTextureRight.id == 0)
+        LOG("Assets/f1_front_car_Left.png");
     if (carTexture.id == 0)
         LOG("No se ha podido cargar Assets/f1_body_car.png");
     if (gFrontCarTexture.id == 0)
@@ -269,6 +353,9 @@ bool ModuleGame::CleanUp()
 
     UnloadTexture(carTexture);
     UnloadTexture(gFrontCarTexture);
+    UnloadTexture(gFrontCarTextureLeft);
+    UnloadTexture(gFrontCarTextureRight);
+
 
     return true;
 }
