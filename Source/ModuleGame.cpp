@@ -154,8 +154,8 @@ private:
         float bodyH = dstBody.height;
 
         // Offset desde el centro (ajústalo si hace falta)
-        float forwardOffset = bodyW * 0.25f;   // hacia la punta del coche
-        float halfTrack = bodyH * 0.28f;   // separación lateral de las ruedas
+        float forwardOffset = bodyW * 0.00f;   // hacia la punta del coche
+        float halfTrack = bodyH * 0.00f;   // separación lateral de las ruedas
 
         float cosA = cosf(angle);
         float sinA = sinf(angle);
@@ -204,10 +204,10 @@ private:
     // Parámetros de movimiento
     const float acceleration = 0.005f;
     const float braking = 0.05f;
-    const float maxSpeed = 2.0f;
+    const float maxSpeed = 0.5f;
     const float moveFactor = 4.0f;   // escala para velocidad en Box2D
     const float baseTurnSpeedDeg = 2.0f;   // grados de giro base
-    const float maxSteerVisualDeg = 25.0f;  // giro máximo de ruedas
+    const float maxSteerVisualDeg = 15.0f;  // giro máximo de ruedas
     const float steerVisualSpeed = 3.0f;   // rapidez con la que giran visualmente
 };
 
