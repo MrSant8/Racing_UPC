@@ -25,28 +25,21 @@ bool ModuleRender::Init()
 // PreUpdate: clear buffer
 update_status ModuleRender::PreUpdate()
 {
-	return UPDATE_CONTINUE;
+    BeginDrawing();
+    ClearBackground(background);
+    return UPDATE_CONTINUE;
 }
 
 // Update: debug camera
 update_status ModuleRender::Update()
 {
-    ClearBackground(background);
-
-    // NOTE: This function setups render batching system for
-    // maximum performance, all consecutive Draw() calls are
-    // not processed until EndDrawing() is called
-    BeginDrawing();
-
 	return UPDATE_CONTINUE;
 }
 
 // PostUpdate present buffer to screen
 update_status ModuleRender::PostUpdate()
 {
-    // Draw everything in our batch!
     DrawFPS(10, 10);
-
     EndDrawing();
 
 	return UPDATE_CONTINUE;

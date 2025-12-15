@@ -4,10 +4,11 @@
 #include "ModuleGame.h"
 #include "ModuleAudio.h"
 #include "ModulePhysics.h"
+#include "ModuleRender.h"   
+#include "ModuleWindow.h"
 
 #include <algorithm>
 
-// Textura global para las ruedas delanteras (para no tocar el .h)
 static Texture2D gFrontCarTexture;
 static Texture2D gFrontCarTextureLeft;
 static Texture2D gFrontCarTextureRight;
@@ -216,10 +217,9 @@ private:
         float angle = body->GetRotation();
         float angleDeg = angle * RAD2DEG;
 
-        // Tamaño general del coche (ajusta este valor)
-        float scale = 0.05f;   // ahora mismo el tamaño que tienes en la captura
+        float scale = 0.05f;   // Tamaño del coche
 
-        // ===== 1. CARROCERÍA =====
+        // ===== CARROCERÍA =====
         Rectangle srcBody = { 0, 0, (float)bodyTexture.width, (float)bodyTexture.height };
         Rectangle dstBody = {
             (float)x, (float)y,
@@ -230,7 +230,7 @@ private:
 
         DrawTexturePro(bodyTexture, srcBody, dstBody, originBody, angleDeg, WHITE);
 
-        // ===== 2. ELEGIR TEXTURA DEL MORRO =====
+        // ===== ELEGIR TEXTURA DEL MORRO =====
         Texture2D* frontTex = &gFrontCarTexture; // recto por defecto
 
         if (steeringInput < -0.1f)       // A
@@ -238,7 +238,7 @@ private:
         else if (steeringInput > 0.1f)   // D
             frontTex = &gFrontCarTextureRight;
 
-        // ===== 3. POSICIÓN DEL MORRO SOBRE LA CARROCERÍA =====
+        // ===== POSICIÓN DEL MORRO SOBRE LA CARROCERÍA =====
         float bodyW = dstBody.width;
 
         // cuánto sobresale el morro hacia delante (ajusta si hace falta)
@@ -251,7 +251,7 @@ private:
         frontPos.x = x + cosA * forwardOffset;
         frontPos.y = y + sinA * forwardOffset;
 
-        // ===== 4. DIBUJAR EL MORRO CON LA MISMA ROTACIÓN =====
+        // ===== DIBUJAR EL MORRO CON LA MISMA ROTACIÓN =====
         Rectangle srcFront = { 0, 0, (float)frontTex->width, (float)frontTex->height };
         Rectangle dstFront = {
             frontPos.x, frontPos.y,
@@ -309,6 +309,10 @@ bool ModuleGame::Start()
 
     App->renderer->camera.x = App->renderer->camera.y = 0;
 
+    mapaMontmelo = LoadTexture("Assets/mapa_montmelo.png");
+    if (mapaMontmelo.id == 0)
+        LOG("No se ha podido cargar Assets/mapa_montmelo.png");
+
     // Texturas del coche
     carTexture = LoadTexture("Assets/f1_body_car.png");
     gFrontCarTexture = LoadTexture("Assets/f1_front_car.png");
@@ -355,6 +359,7 @@ bool ModuleGame::CleanUp()
     UnloadTexture(gFrontCarTexture);
     UnloadTexture(gFrontCarTextureLeft);
     UnloadTexture(gFrontCarTextureRight);
+    UnloadTexture(mapaMontmelo);
 
 
     return true;
@@ -363,10 +368,24 @@ bool ModuleGame::CleanUp()
 // Update: draw background + entities
 update_status ModuleGame::Update()
 {
-    // Fondo
-    ClearBackground(BLACK);
+    constexpr float MAP_SCALE = 4.0f;
 
-    // ----- Circuito sencillo (puedes cambiarlo luego) -----
+    // --- Posición del coche en mundo (pixeles) ---
+    int carPx, carPy;
+    car->body->GetPhysicPosition(carPx, carPy);
+
+    // --- Cámara fija al coche (coche centrado siempre) ---
+    float screenW = (float)SCREEN_WIDTH;
+    float screenH = (float)SCREEN_HEIGHT;
+
+    App->renderer->camera.x = screenW * 0.5f - (float)carPx * MAP_SCALE;
+    App->renderer->camera.y = screenH * 0.5f - (float)carPy * MAP_SCALE;
+
+    //// --- Dibuja el mapa con la cámara aplicada ---
+    //Vector2 mapPos = { App->renderer->camera.x, App->renderer->camera.y };
+    //DrawTextureEx(mapaMontmelo, mapPos, 0.0f, MAP_SCALE, WHITE);
+     //// ----- Circuito sencillo (puedes cambiarlo luego) -----
+
     // Bordes rojos
     DrawRectangle(0, 0, SCREEN_WIDTH, 20, RED);
     DrawRectangle(0, SCREEN_HEIGHT - 20, SCREEN_WIDTH, 20, RED);
@@ -383,12 +402,16 @@ update_status ModuleGame::Update()
     DrawRectangle(SCREEN_WIDTH / 2 - startWidth / 2, 0,
         startWidth, SCREEN_HEIGHT, WHITE);
 
-    // ----- Actualizar / dibujar entidades (coche) -----
     for (PhysicEntity* entity : entities)
         entity->Update();
 
     return UPDATE_CONTINUE;
 }
+  
+
+   
+
+
 
 // Por ahora no usamos colisiones
 void ModuleGame::OnCollision(PhysBody* bodyA, PhysBody* bodyB)
