@@ -40,6 +40,12 @@ public:
 	Texture2D frontCarTexture;
 	Texture2D frontCarTextureLeft;
 	Texture2D frontCarTextureRight;
+	PhysBody* checkP1 = nullptr;
+	PhysBody* checkP2 = nullptr;
+	PhysBody* checkP3 = nullptr;
+
+	int nextCheckpoint = 1;
+	int lapCount = 0;
 
 	uint32 bonus_fx;
 

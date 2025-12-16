@@ -220,7 +220,6 @@ update_status ModulePhysics::PostUpdate()
 		{
 			switch(f->GetType())
 			{
-				// Draw circles ------------------------------------------------
 				case b2Shape::e_circle:
 				{
 					b2CircleShape* shape = (b2CircleShape*)f->GetShape();
@@ -230,7 +229,6 @@ update_status ModulePhysics::PostUpdate()
 				}
 				break;
 
-				// Draw polygons ------------------------------------------------
 				case b2Shape::e_polygon:
 				{
 					b2PolygonShape* polygonShape = (b2PolygonShape*)f->GetShape();
@@ -251,7 +249,6 @@ update_status ModulePhysics::PostUpdate()
 				}
 				break;
 
-				// Draw chains contour -------------------------------------------
 				case b2Shape::e_chain:
 				{
 					b2ChainShape* shape = (b2ChainShape*)f->GetShape();
@@ -270,7 +267,7 @@ update_status ModulePhysics::PostUpdate()
 				}
 				break;
 
-				// Draw a single segment(edge) ----------------------------------
+
 				case b2Shape::e_edge:
 				{
 					b2EdgeShape* shape = (b2EdgeShape*)f->GetShape();
@@ -288,13 +285,10 @@ update_status ModulePhysics::PostUpdate()
 	return UPDATE_CONTINUE;
 }
 
-
-// Called before quitting
 bool ModulePhysics::CleanUp()
 {
 	LOG("Destroying physics world");
 
-	// Delete the whole physics world!
 	delete world;
 
 	return true;
@@ -345,8 +339,6 @@ int PhysBody::RayCast(int x1, int y1, int x2, int y2, float& normal_x, float& no
 	{
 		if(fixture->GetShape()->RayCast(&output, input, body->GetTransform(), 0) == true)
 		{
-			// do we want the normal ?
-
 			float fx = (float)(x2 - x1);
 			float fy = (float)(y2 - y1);
 			float dist = sqrtf((fx*fx) + (fy*fy));

@@ -344,6 +344,11 @@ bool ModuleGame::Start()
 
     entities.emplace_back(car);
 
+    // X Y ANCHURA ALTURA
+    checkP1 = App->physics->CreateRectangleSensor(300, 300, 80, 40); checkP1->listener = this;
+    checkP2 = App->physics->CreateRectangleSensor(800, 300, 80, 40); checkP2->listener = this;
+    checkP3 = App->physics->CreateRectangleSensor(800, 600, 80, 40); checkP3->listener = this;
+
     return ret;
 }
 
@@ -405,16 +410,37 @@ update_status ModuleGame::Update()
     for (PhysicEntity* entity : entities)
         entity->Update();
 
+    DrawText(TextFormat("VUELTAS: %d", lapCount), 20, 40, 20, BLACK);
+    DrawText(TextFormat("CHECKPOINT: %d/3", nextCheckpoint - 1), 20, 70, 20, BLACK);
+
     return UPDATE_CONTINUE;
 }
   
-
-   
-
-
-
-// Por ahora no usamos colisiones
 void ModuleGame::OnCollision(PhysBody* bodyA, PhysBody* bodyB)
 {
-    // Aquí puedes gestionar colisiones más adelante
+    // Queremos detectar cuando el coche toca un checkpoint:
+    PhysBody* other = nullptr;
+
+    // Si A es el coche
+    if (bodyA == car->body) other = bodyB;
+    // Si B es el coche
+    else if (bodyB == car->body) other = bodyA;
+    else return;
+
+    // Checkpoints en orden
+    if (nextCheckpoint == 1 && other == checkP1)
+    {
+        nextCheckpoint = 2;
+    }
+    else if (nextCheckpoint == 2 && other == checkP2)
+    {
+        nextCheckpoint = 3;
+    }
+    else if (nextCheckpoint == 3 && other == checkP3)
+    {
+        lapCount++;
+        nextCheckpoint = 1; // vuelta completa
+        App->audio->PlayFx(bonus_fx); 
+    }
 }
+
