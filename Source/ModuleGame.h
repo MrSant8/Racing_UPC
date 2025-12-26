@@ -4,53 +4,57 @@
 #include "Module.h"
 
 #include "p2Point.h"
-
 #include "raylib.h"
+
 #include <vector>
 #include <set>
 
 class PhysBody;
 class PhysicEntity;
-
+class Box;  
 
 class ModuleGame : public Module
 {
 public:
-	ModuleGame(Application* app, bool start_enabled = true);
-	~ModuleGame();
+    ModuleGame(Application* app, bool start_enabled = true);
+    ~ModuleGame();
 
-	bool Start();
-	update_status Update();
-	bool CleanUp();
-	void OnCollision(PhysBody* bodyA, PhysBody* bodyB);
+    bool Start();
+    update_status Update();
+    bool CleanUp();
+    void OnCollision(PhysBody* bodyA, PhysBody* bodyB);
 
 public:
+    // ---------- ENTIDADES ----------
+    std::vector<PhysicEntity*> entities;
 
-	std::vector<PhysicEntity*> entities;
-	
-	PhysBody* sensor;
-	bool sensed;
+    // ---------- COCHES ----------
+    Box* car = nullptr;        // jugador
+    Box* aiCar = nullptr;      // IA
 
-	Texture2D circle;
-	Texture2D box;
-	Texture2D mapaMontmelo;
-	Texture2D rick;
-	Texture2D carTexture;
-	PhysicEntity* car;
-	Texture2D frontCarTexture;
-	Texture2D frontCarTextureLeft;
-	Texture2D frontCarTextureRight;
-	PhysBody* checkP1 = nullptr;
-	PhysBody* checkP2 = nullptr;
-	PhysBody* checkP3 = nullptr;
+    // ---------- CHECKPOINTS ----------
+    PhysBody* checkP1 = nullptr;
+    PhysBody* checkP2 = nullptr;
+    PhysBody* checkP3 = nullptr;
 
-	int nextCheckpoint = 1;
-	int lapCount = 0;
+    int nextCheckpoint = 1;
+    int lapCount = 0;
 
-	uint32 bonus_fx;
+    int aiNextCheckpoint = 1;
+    int aiLapCount = 0;
 
-	vec2<int> ray;
-	bool ray_on;
+    // ---------- ASSETS ----------
+    Texture2D carTexture;
+    Texture2D mapaMontmelo;
 
-	std::set<std::set<PhysicEntity*>> collidingEntities;
+    uint32 bonus_fx;
+
+    // ---------- DEBUG / OTROS ----------
+    PhysBody* sensor = nullptr;
+    bool sensed = false;
+
+    vec2<int> ray;
+    bool ray_on = false;
+
+    std::set<std::set<PhysicEntity*>> collidingEntities;
 };
