@@ -344,28 +344,39 @@ bool ModuleGame::CleanUp()
 
 update_status ModuleGame::Update()
 {
-    // Si tu BeginDrawing/ClearBackground está en ModuleRender::PreUpdate,
-    // no hagas ClearBackground aquí.
+    // Update camera to follow player car
+    if (car != nullptr)
+    {
+        int carPx, carPy;
+        car->body->GetPhysicPosition(carPx, carPy);
 
-    // (Opcional) cámara siguiendo jugador
-    // constexpr float MAP_SCALE = 4.0f;
-    // int carPx, carPy;
-    // car->body->GetPhysicPosition(carPx, carPy);
-    // App->renderer->camera.x = (float)SCREEN_WIDTH * 0.5f - (float)carPx * MAP_SCALE;
-    // App->renderer->camera.y = (float)SCREEN_HEIGHT * 0.5f - (float)carPy * MAP_SCALE;
+        // Camera follows player, keeping them centered on screen
+        // MAP_SCALE determines the zoom level (higher = more zoomed in)
+        constexpr float MAP_SCALE = 4.0f;
+        App->renderer->camera.x = (float)SCREEN_WIDTH * 0.5f - (float)carPx;
+        App->renderer->camera.y = (float)SCREEN_HEIGHT * 0.5f - (float)carPy;
+    }
 
-    // Circuito simple (lo que tenías)
-    DrawRectangle(0, 0, SCREEN_WIDTH, 20, RED);
-    DrawRectangle(0, SCREEN_HEIGHT - 20, SCREEN_WIDTH, 20, RED);
-    DrawRectangle(0, 0, 20, SCREEN_HEIGHT, RED);
-    DrawRectangle(SCREEN_WIDTH - 20, 0, 20, SCREEN_HEIGHT, RED);
+    // Draw map background at fixed screen position (no camera offset)
+    Rectangle map_src = { 0, 0, (float)mapaMontmelo.width, (float)mapaMontmelo.height };
+    Rectangle map_dst = { 0, 0, (float)mapaMontmelo.width, (float)mapaMontmelo.height };
+    DrawTexturePro(mapaMontmelo, map_src, map_dst, { 0, 0 }, 0.0f, WHITE);
+
+    float cam_x = App->renderer->camera.x;
+    float cam_y = App->renderer->camera.y;
+
+    // Circuito simple - apply camera offset to world objects
+    DrawRectangle((int)(0 + cam_x), (int)(0 + cam_y), SCREEN_WIDTH, 20, RED);
+    DrawRectangle((int)(0 + cam_x), (int)(SCREEN_HEIGHT - 20 + cam_y), SCREEN_WIDTH, 20, RED);
+    DrawRectangle((int)(0 + cam_x), (int)(0 + cam_y), 20, SCREEN_HEIGHT, RED);
+    DrawRectangle((int)(SCREEN_WIDTH - 20 + cam_x), (int)(0 + cam_y), 20, SCREEN_HEIGHT, RED);
 
     int trackHeight = 60;
     int trackY = SCREEN_HEIGHT / 2 - trackHeight / 2;
-    DrawRectangle(80, trackY, SCREEN_WIDTH - 160, trackHeight, GREEN);
+    DrawRectangle((int)(80 + cam_x), (int)(trackY + cam_y), SCREEN_WIDTH - 160, trackHeight, GREEN);
 
     int startWidth = 40;
-    DrawRectangle(SCREEN_WIDTH / 2 - startWidth / 2, 0,
+    DrawRectangle((int)(SCREEN_WIDTH / 2 - startWidth / 2 + cam_x), (int)(0 + cam_y),
         startWidth, SCREEN_HEIGHT, WHITE);
 
     // Actualizar entidades
