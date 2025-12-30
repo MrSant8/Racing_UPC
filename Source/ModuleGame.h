@@ -49,6 +49,11 @@ public:
 
     uint32 bonus_fx;
 
+    // ---------- GASOLINE SYSTEM ----------
+    float gasoline =100.0f;
+    const int max_gasoline = 100;
+    const float gasoline_drain_rate =5.0f;  // units per second (increased for visibility)
+
     // ---------- DEBUG / OTROS ----------
     PhysBody* sensor = nullptr;
     bool sensed = false;

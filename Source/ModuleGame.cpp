@@ -71,7 +71,7 @@ private:
         if (IsKeyDown(KEY_W)) forwardInput = 1.0f;
         if (IsKeyDown(KEY_S)) forwardInput = -1.0f;
         if (IsKeyDown(KEY_A)) steeringInput = -1.0f;
-        if (IsKeyDown(KEY_D)) steeringInput = 1.0f;
+     if (IsKeyDown(KEY_D)) steeringInput = 1.0f;
     }
 
     // ---------------------- IA SIMPLE: seguir checkP1->checkP2->checkP3 ----------------------
@@ -119,60 +119,102 @@ private:
     // ---------------- VELOCIDAD / FRENADO / GIRO ----------------
     void UpdateMovement()
     {
-        float angle = body->GetRotation();         // radianes
-        b2Vec2 posMeters = body->body->GetPosition();
+        float angle = body->GetRotation();
+    b2Vec2 posMeters = body->body->GetPosition();
 
-        // ---- ACELERAR / FRENAR ----
-        if (forwardInput > 0.0f)
-        {
-            speedCar += acceleration;
-            if (speedCar > maxSpeed) speedCar = maxSpeed;
-        }
-        else if (forwardInput < 0.0f)
-        {
-            speedCar -= acceleration;
-            if (speedCar < -maxSpeed) speedCar = -maxSpeed;
-        }
-        else
-        {
-            if (speedCar > 0.0f)
-            {
-                speedCar -= braking;
-                if (speedCar < 0.0f) speedCar = 0.0f;
-            }
-            else if (speedCar < 0.0f)
-            {
-                speedCar += braking;
-                if (speedCar > 0.0f) speedCar = 0.0f;
-            }
-        }
+// Get game module to check gasoline
+        ModuleGame* game = (ModuleGame*)listener;
+        float dt = GetFrameTime();
 
-        // ---- GIRO DEL COCHE ----
-        float speedFactor = fabsf(speedCar);
-        float baseTurnSpeedRad = baseTurnSpeedDeg * DEGTORAD;
+ // Debug: only for player car
+ if (!isAI)
+ {
+ LOG("UpdateMovement (player): forwardInput=%.2f speed=%.2f gasoline=%.3f dt=%.4f", forwardInput, speedCar, game->gasoline, dt);
+ }
 
-        angle += steeringInput * baseTurnSpeedRad * speedFactor;
+ // ---- ACELERAR / FRENAR ----
+ // Only allow acceleration if gasoline >0 (for player)
+ bool canAccelerate = true;
+ if (!isAI) canAccelerate = (game->gasoline >0.0f);
 
-        // ---- GIRO VISUAL (opcional) ----
-        if (steeringInput != 0.0f)
-        {
-            steeringVisual += steeringInput * steerVisualSpeed;
-            if (steeringVisual > maxSteerVisualDeg) steeringVisual = maxSteerVisualDeg;
-            if (steeringVisual < -maxSteerVisualDeg) steeringVisual = -maxSteerVisualDeg;
-        }
-        else
-        {
-            steeringVisual *= 0.85f;
-        }
+ bool inputMoving = (forwardInput >0.0f || forwardInput <0.0f);
 
-        // ---- APLICAR A BOX2D ----
-        body->body->SetTransform(posMeters, angle);
+ if (isAI)
+ {
+ // AI: move without consuming player's gasoline
+ if (forwardInput >0.0f)
+ {
+ speedCar += acceleration;
+ if (speedCar > maxSpeed) speedCar = maxSpeed;
+ }
+ else if (forwardInput <0.0f)
+ {
+ speedCar -= acceleration;
+ if (speedCar < -maxSpeed) speedCar = -maxSpeed;
+ }
+ }
+ else
+ {
+ // Player: only accelerate if has gasoline
+ if (inputMoving && canAccelerate)
+ {
+ if (forwardInput >0.0f)
+ {
+ speedCar += acceleration;
+ if (speedCar > maxSpeed) speedCar = maxSpeed;
+ }
+ else if (forwardInput <0.0f)
+ {
+ speedCar -= acceleration;
+ if (speedCar < -maxSpeed) speedCar = -maxSpeed;
+ }
 
-        b2Vec2 vel;
-        vel.x = cosf(angle) * speedCar * moveFactor;
-        vel.y = sinf(angle) * speedCar * moveFactor;
-        body->body->SetLinearVelocity(vel);
+ // Drain gasoline while player is pressing throttle (framerate-independent)
+ game->gasoline -= game->gasoline_drain_rate * dt;
+ if (game->gasoline <0.0f) game->gasoline =0.0f;
+ }
+ else
+ {
+ // No input movement: apply friction/braking for player
+ if (speedCar >0.0f)
+ {
+ speedCar -= braking;
+ if (speedCar <0.0f) speedCar =0.0f;
+ }
+ else if (speedCar <0.0f)
+ {
+ speedCar += braking;
+ if (speedCar >0.0f) speedCar =0.0f;
+ }
+ }
+ }
+
+    // ---- GIRO DEL COCHE ----
+    float speedFactor = fabsf(speedCar);
+    float baseTurnSpeedRad = baseTurnSpeedDeg * DEGTORAD;
+
+    angle += steeringInput * baseTurnSpeedRad * speedFactor;
+
+    // ---- GIRO VISUAL (opcional) ----
+    if (steeringInput !=0.0f)
+    {
+        steeringVisual += steeringInput * steerVisualSpeed;
+        if (steeringVisual > maxSteerVisualDeg) steeringVisual = maxSteerVisualDeg;
+        if (steeringVisual < -maxSteerVisualDeg) steeringVisual = -maxSteerVisualDeg;
     }
+    else
+    {
+        steeringVisual *=0.85f;
+    }
+
+    // ---- APLICAR A BOX2D ----
+    body->body->SetTransform(posMeters, angle);
+
+    b2Vec2 vel;
+    vel.x = cosf(angle) * speedCar * moveFactor;
+    vel.y = sinf(angle) * speedCar * moveFactor;
+    body->body->SetLinearVelocity(vel);
+ }
 
     // ---------------------- DIBUJAR COCHE ----------------------
     void DrawCar()
@@ -450,6 +492,10 @@ update_status ModuleGame::Update()
     DrawText(TextFormat("AI CP: %d/%d", aiNextCheckpoint, (int)checkpoints.size()), 30, 140, 20, WHITE);
 	DrawText(TextFormat("LAPS: %d", lapCount), 30, 100, 20, WHITE);
 	DrawText(TextFormat("AI LAPS: %d", aiLapCount), 30, 120, 20, WHITE);
+
+    // Gasoline meter
+    DrawText(TextFormat("Gasolina: %d/100", (int)gasoline), 30, 40, 20, WHITE);
+
 
 
     DrawText(TextFormat("CAR X: %d", carPx), 30, 180, 20, WHITE);
