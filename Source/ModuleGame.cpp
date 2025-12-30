@@ -132,16 +132,22 @@ private:
  int car_px, car_py;
  body->GetPhysicPosition(car_px, car_py);
 
- const int brown_x =13360;
- const int brown_y =5100;
+ const int brown1_x =13360;
+ const int brown1_y =5100;
+ const int brown2_x =5800;
+ const int brown2_y =4230;
  const int brown_w =300;
  const int brown_h =150;
 
+ bool insideBrown = false;
+ if (car_px >= brown1_x && car_px <= brown1_x + brown_w && car_py >= brown1_y && car_py <= brown1_y + brown_h)
+ insideBrown = true;
+ else if (car_px >= brown2_x && car_px <= brown2_x + brown_w && car_py >= brown2_y && car_py <= brown2_y + brown_h)
+ insideBrown = true;
+
  // Car must be inside rectangle AND be stationary to regenerate
  const float stop_threshold =0.05f; // small speed threshold
- if (car_px >= brown_x && car_px <= brown_x + brown_w &&
- car_py >= brown_y && car_py <= brown_y + brown_h &&
- fabsf(speedCar) < stop_threshold && forwardInput ==0.0f)
+ if (insideBrown && fabsf(speedCar) < stop_threshold && forwardInput ==0.0f)
  {
  game->gasoline +=20.0f * dt; //20 units per second
  if (game->gasoline > (float)game->max_gasoline) game->gasoline = (float)game->max_gasoline;
@@ -499,6 +505,7 @@ update_status ModuleGame::Update()
     // DrawRectangle((int)(13360 + cam_x), (int)(5150 + cam_y),300,150, BROWN);
     // brown rectangle moved and resized: at (13360,5100), width=300, height=150
     DrawRectangle((int)(13360 + cam_x), (int)(5100 + cam_y),300,150, BROWN);
+    DrawRectangle((int)(5800 + cam_x), (int)(4230 + cam_y),300,150, BROWN);
 
     int trackHeight =60;
     int trackY = SCREEN_HEIGHT / 2 - trackHeight / 2;
