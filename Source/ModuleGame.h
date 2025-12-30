@@ -33,14 +33,14 @@ public:
     Box* aiCar = nullptr;      // IA
 
     // ---------- CHECKPOINTS ----------
-    PhysBody* checkP1 = nullptr;
-    PhysBody* checkP2 = nullptr;
-    PhysBody* checkP3 = nullptr;
+    // Checkpoints (sensores)
+    std::vector<PhysBody*> checkpoints;
 
-    int nextCheckpoint = 1;
+    // Progreso player / IA
+    int nextCheckpoint = 0; 
     int lapCount = 0;
 
-    int aiNextCheckpoint = 1;
+    int aiNextCheckpoint = 0;
     int aiLapCount = 0;
 
     // ---------- ASSETS ----------
@@ -55,6 +55,21 @@ public:
 
     vec2<int> ray;
     bool ray_on = false;
+
+
+    struct CPDebugRect { int x, y, w, h; };
+    std::vector<CPDebugRect> checkpointDebug;
+
+    // debugg colissionessssss bb
+    struct DebugPoint
+    {
+        int x = 0;
+        int y = 0;
+        float angle = 0.0f;
+    };
+
+    std::vector<DebugPoint> savedPoints;
+
 
     std::set<std::set<PhysicEntity*>> collidingEntities;
 };

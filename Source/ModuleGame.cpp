@@ -4,6 +4,7 @@
 #include "ModuleAudio.h"
 #include "ModulePhysics.h"
 #include "ModuleRender.h"
+#include <vector>
 
 #include "raylib.h"
 #include <cmath>
@@ -85,10 +86,13 @@ private:
         ModuleGame* game = (ModuleGame*)listener;
 
         PhysBody* target = nullptr;
-        if (game->aiNextCheckpoint == 1) target = game->checkP1;
-        else if (game->aiNextCheckpoint == 2) target = game->checkP2;
-        else target = game->checkP3;
-
+        if (!game->checkpoints.empty())
+        {
+            int idx = game->aiNextCheckpoint;
+            if (idx < 0) idx = 0;
+            if (idx >= (int)game->checkpoints.size()) idx = 0;
+            target = game->checkpoints[idx];
+        }
         if (target == nullptr) return;
 
         int tx, ty;
@@ -234,9 +238,9 @@ private:
     float speedCar = 0.0f;
     float steeringVisual = 0.0f;
 
-    const float acceleration = 0.0015f;
+    const float acceleration = 0.0115f;
     const float braking = 0.020f;
-    const float maxSpeed = 2.2f;
+    const float maxSpeed = 5.2f;
 
     const float moveFactor = 2.0f;
 
@@ -264,7 +268,6 @@ ModuleGame::ModuleGame(Application* app, bool start_enabled) : Module(app, start
     aiLapCount = 0;
     aiNextCheckpoint = 1;
 
-    checkP1 = checkP2 = checkP3 = nullptr;
 }
 
 ModuleGame::~ModuleGame()
@@ -324,30 +327,43 @@ bool ModuleGame::Start()
     car->body->body->SetFixedRotation(true);
     aiCar->body->body->SetFixedRotation(true); 
 
-    // Checkpoints 
-    // X Y ANCHURA ALTURA
- // ===== CHECKPOINTS CIRCUITO MONTMELÓ =====
+// ================= CHECKPOINTS =================
+    checkpoints.clear();
 
-// Línea de salida / meta
-    checkP1 = App->physics->CreateRectangleSensor(
-        10779,   // X
-        5460,    // Y
-        200,     // ancho (cruza toda la pista)
-        80       
-    );
-    checkP1->listener = this;
+    struct CheckpointData
+    {
+        int x, y, w, h;
+    };
 
-    checkP2 = App->physics->CreateRectangleSensor(11500, 5200, 200, 80);
-    checkP2->listener = this;
-    checkP3 = App->physics->CreateRectangleSensor(9800, 5800, 200, 80);
-    checkP3->listener = this;
+    std::vector<CheckpointData> cpData =
+    {
+        {10779, 5460, 300, 120},// 0 salida/meta
+        {7976, 42834, 200, 80}, // 1
+        {15564, 43222, 200, 80}, // 2
+        {16145, 43859, 200, 80}, // 3
+        {16418, 44113, 200, 80}, // 4
+ 
+    };
 
+
+    for (const auto& cp : cpData)
+    {
+        PhysBody* sensor = App->physics->CreateRectangleSensor(
+            cp.x,
+            cp.y,
+            cp.w,
+            cp.h
+        );
+
+        sensor->listener = this;
+        checkpoints.push_back(sensor);
+    }
 
     // Reset contadores
     lapCount = 0;
-    nextCheckpoint = 1;
+    nextCheckpoint = 0;
     aiLapCount = 0;
-    aiNextCheckpoint = 1;
+    aiNextCheckpoint = 0;
 
     return ret;
 }
@@ -376,9 +392,34 @@ update_status ModuleGame::Update()
 
     // Posición del coche 
     int carPx = 0, carPy = 0;
+    float carAngle = 0.0f;
+
     if (car != nullptr)
+    {
         car->body->GetPhysicPosition(carPx, carPy);
-    float carAngle = car->body->GetRotation() * RAD2DEG;
+        carAngle = car->body->GetRotation() * RAD2DEG;
+    }
+    else
+    {
+        return UPDATE_CONTINUE;
+    }
+
+    // ===== GUARDAR COORDENADAS CON TECLA =====
+    if (IsKeyPressed(KEY_P))  // P = guardar punto
+    {
+        DebugPoint pt;
+        pt.x = carPx;
+        pt.y = carPy;
+        pt.angle = carAngle;
+
+        savedPoints.push_back(pt);
+
+        // Limitar a 20 puntos para no llenar la memoria
+        if (savedPoints.size() > 20)
+            savedPoints.erase(savedPoints.begin());
+
+        LOG("SAVED POINT: X=%d Y=%d ANG=%.2f", pt.x, pt.y, pt.angle);
+    }
 
 
     // Cámara offset para centrar el coche
@@ -405,15 +446,56 @@ update_status ModuleGame::Update()
         entity->Update();
 
     // HUD
-    DrawText(TextFormat("PLAYER LAPS: %d", lapCount), 30, 40, 20, BLACK);
-    DrawText(TextFormat("PLAYER CP: %d/3", nextCheckpoint - 1), 30, 70, 20, BLACK);
+    DrawText(TextFormat("PLAYER CP: %d/%d", nextCheckpoint, (int)checkpoints.size()), 30, 70, 20, WHITE);
+    DrawText(TextFormat("AI CP: %d/%d", aiNextCheckpoint, (int)checkpoints.size()), 30, 140, 20, WHITE);
+	DrawText(TextFormat("LAPS: %d", lapCount), 30, 100, 20, WHITE);
+	DrawText(TextFormat("AI LAPS: %d", aiLapCount), 30, 120, 20, WHITE);
 
-    DrawText(TextFormat("AI LAPS: %d", aiLapCount), 30, 110, 20, BLACK);
-    DrawText(TextFormat("AI CP: %d/3", aiNextCheckpoint - 1), 30, 140, 20, BLACK);
 
     DrawText(TextFormat("CAR X: %d", carPx), 30, 180, 20, WHITE);
     DrawText(TextFormat("CAR Y: %d", carPy), 30, 210, 20, WHITE);
     DrawText(TextFormat("CAR ANGLE: %.2f", carAngle), 30, 240, 20, WHITE);
+
+    // ===== DEBUG: dibujar checkpoints =====
+    for (int i = 0; i < (int)checkpoints.size(); ++i)
+    {
+        PhysBody* s = checkpoints[i];
+        int x, y;
+        s->GetPhysicPosition(x, y);
+
+        float camX = App->renderer->camera.x;
+        float camY = App->renderer->camera.y;
+
+        Color c = (i == nextCheckpoint) ? YELLOW : RED;
+
+      DrawRectangleLines(
+    (int)(x + camX - s->width * 0.5f),
+    (int)(y + camY - s->height * 0.5f),
+    s->width,
+    s->height,
+    c
+);
+    }
+
+    // ===== MOSTRAR LISTA DE PUNTOS GUARDADOS =====
+    int startY = 280;
+    DrawText("SAVED POINTS (press P):", 30, startY, 20, WHITE);
+
+    int lineY = startY + 30;
+    for (int i = (int)savedPoints.size() - 1; i >= 0; --i)
+    {
+        const DebugPoint& pt = savedPoints[i];
+        DrawText(TextFormat("%02d) X:%d Y:%d A:%.1f",
+            i, pt.x, pt.y, pt.angle),
+            30, lineY, 18, WHITE);
+
+        lineY += 22;
+        if (lineY > SCREEN_HEIGHT - 20) break; // no bajar infinito
+    }
+
+    int cx, cy; checkpoints[nextCheckpoint]->GetPhysicPosition(cx, cy);
+    DrawText(TextFormat("DIST: %.1f", sqrtf((cx - carPx) * (cx - carPx) + (cy - carPy) * (cy - carPy))), 30, 260, 20, WHITE);
+
 
     return UPDATE_CONTINUE;
 }
@@ -421,39 +503,49 @@ update_status ModuleGame::Update()
 
 void ModuleGame::OnCollision(PhysBody* bodyA, PhysBody* bodyB)
 {
-    PhysBody* other = nullptr;
-    bool hitPlayer = false;
-    bool hitAI = false;
-
-    // ¿Colisiona jugador con sensor?
-    if (bodyA == car->body) { other = bodyB; hitPlayer = true; }
-    else if (bodyB == car->body) { other = bodyA; hitPlayer = true; }
-    // ¿Colisiona IA con sensor?
-    else if (aiCar && bodyA == aiCar->body) { other = bodyB; hitAI = true; }
-    else if (aiCar && bodyB == aiCar->body) { other = bodyA; hitAI = true; }
-    else return;
+    if (checkpoints.empty() || car == nullptr) return;
 
     // -------- PLAYER --------
-    if (hitPlayer)
+    if (bodyA == car->body || bodyB == car->body)
     {
-        if (nextCheckpoint == 1 && other == checkP1) nextCheckpoint = 2;
-        else if (nextCheckpoint == 2 && other == checkP2) nextCheckpoint = 3;
-        else if (nextCheckpoint == 3 && other == checkP3)
+        PhysBody* other = (bodyA == car->body) ? bodyB : bodyA;
+
+        // seguridad por si nextCheckpoint se va de rango
+        if (nextCheckpoint < 0 || nextCheckpoint >= (int)checkpoints.size())
+            nextCheckpoint = 0;
+
+        if (other == checkpoints[nextCheckpoint])
         {
-            lapCount++;
-            nextCheckpoint = 1;
-            App->audio->PlayFx(bonus_fx);
+            nextCheckpoint++;
+
+            if (nextCheckpoint >= (int)checkpoints.size())
+            {
+                nextCheckpoint = 0;
+                lapCount++;
+                App->audio->PlayFx(bonus_fx);
+            }
         }
+        return; // importante: para no procesar también IA en la misma colisión
     }
+
     // -------- IA --------
-    if (hitAI)
+    if (aiCar != nullptr && (bodyA == aiCar->body || bodyB == aiCar->body))
     {
-        if (aiNextCheckpoint == 1 && other == checkP1) aiNextCheckpoint = 2;
-        else if (aiNextCheckpoint == 2 && other == checkP2) aiNextCheckpoint = 3;
-        else if (aiNextCheckpoint == 3 && other == checkP3)
+        PhysBody* other = (bodyA == aiCar->body) ? bodyB : bodyA;
+
+        if (aiNextCheckpoint < 0 || aiNextCheckpoint >= (int)checkpoints.size())
+            aiNextCheckpoint = 0;
+
+        if (other == checkpoints[aiNextCheckpoint])
         {
-            aiLapCount++;
-            aiNextCheckpoint = 1;
+            aiNextCheckpoint++;
+
+            if (aiNextCheckpoint >= (int)checkpoints.size())
+            {
+                aiNextCheckpoint = 0;
+                aiLapCount++;
+            }
         }
+        return;
     }
 }
