@@ -259,7 +259,7 @@ private:
             (float)x + camX, (float)y + camY,
             bodyTexture.width * scale,
             bodyTexture.height * scale
-        };
+        }; 
         Vector2 originBody = { dstBody.width / 2.0f, dstBody.height / 2.0f };
 
         DrawTexturePro(bodyTexture, srcBody, dstBody, originBody, angleDeg, WHITE);
@@ -302,9 +302,9 @@ private:
     float speedCar = 0.0f;
     float steeringVisual = 0.0f;
 
-    const float acceleration = 0.0115f;
+    const float acceleration = 0.115f;
     const float braking = 0.020f;
-    const float maxSpeed = 5.2f;
+    const float maxSpeed = 10.0f;
 
     const float moveFactor = 2.0f;
 
@@ -375,8 +375,6 @@ bool ModuleGame::Start()
 
     car->body->body->SetFixedRotation(true);
 
-
-
     // Coche IA
     aiCar = new Box(App->physics,
         SCREEN_WIDTH / 2 + 120,
@@ -385,7 +383,7 @@ bool ModuleGame::Start()
         carTexture,
         gFrontCarTexture,
         true);
-
+    
     entities.emplace_back(aiCar);
 
     car->body->body->SetFixedRotation(true);
@@ -401,11 +399,12 @@ bool ModuleGame::Start()
 
     std::vector<CheckpointData> cpData =
     {
-    {10779, 5460, 700, 120}, // 0
-    {10579, 5460, 300, 120}, // 1
-    {10379, 5460, 300, 120}, // 2
-    {10179, 5460, 300, 120}, // 3
-    { 9979, 5460, 300, 120}, // 4
+        {10779, 5460, 300, 120},// 0 salida/meta
+        {7976, 42834, 200, 80}, // 1
+        {15564, 43222, 200, 80}, // 2
+        {16145, 43859, 200, 80}, // 3
+        {16418, 44113, 200, 80}, // 4
+ 
     };
 
 
