@@ -52,7 +52,7 @@ public:
     // ---------- GASOLINE SYSTEM ----------
     float gasoline =100.0f;
     const int max_gasoline = 100;
-    const float gasoline_drain_rate =5.0f;  // units per second (increased for visibility)
+    const float gasoline_drain_rate =1.0f;  // units per second (increased for visibility)
 
     // ---------- DEBUG / OTROS ----------
     PhysBody* sensor = nullptr;

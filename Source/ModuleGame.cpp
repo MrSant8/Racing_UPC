@@ -126,6 +126,28 @@ private:
         ModuleGame* game = (ModuleGame*)listener;
         float dt = GetFrameTime();
 
+ // ---- REGENERATE IF INSIDE BROWN RECTANGLE (world coords) ----
+ if (!isAI)
+ {
+ int car_px, car_py;
+ body->GetPhysicPosition(car_px, car_py);
+
+ const int brown_x =13360;
+ const int brown_y =5100;
+ const int brown_w =300;
+ const int brown_h =150;
+
+ // Car must be inside rectangle AND be stationary to regenerate
+ const float stop_threshold =0.05f; // small speed threshold
+ if (car_px >= brown_x && car_px <= brown_x + brown_w &&
+ car_py >= brown_y && car_py <= brown_y + brown_h &&
+ fabsf(speedCar) < stop_threshold && forwardInput ==0.0f)
+ {
+ game->gasoline +=20.0f * dt; //20 units per second
+ if (game->gasoline > (float)game->max_gasoline) game->gasoline = (float)game->max_gasoline;
+ }
+ }
+
  // Debug: only for player car
  if (!isAI)
  {
@@ -473,9 +495,14 @@ update_status ModuleGame::Update()
 
     // Dibuja el MAPA como mundo
     Vector2 mapPos = { cam_x, cam_y };
-    DrawTextureEx(mapaMontmelo, mapPos, 0.0f, MAP_SCALE, WHITE);
+    DrawTextureEx(mapaMontmelo, mapPos,0.0f, MAP_SCALE, WHITE);
 
-    int trackHeight = 60;
+    // brown rectangle moved and resized: at (13360,5150), width=300, height=150
+    // DrawRectangle((int)(13360 + cam_x), (int)(5150 + cam_y),300,150, BROWN);
+    // brown rectangle moved and resized: at (13360,5100), width=300, height=150
+    DrawRectangle((int)(13360 + cam_x), (int)(5100 + cam_y),300,150, BROWN);
+
+    int trackHeight =60;
     int trackY = SCREEN_HEIGHT / 2 - trackHeight / 2;
     DrawRectangle((int)(80 + cam_x), (int)(trackY + cam_y), SCREEN_WIDTH - 160, trackHeight, GREEN);
 
