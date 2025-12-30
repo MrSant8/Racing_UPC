@@ -8,7 +8,6 @@
 #include "raylib.h"
 #include <cmath>
 
-// Texturas globales del morro (para no tocar el .h)
 static Texture2D gFrontCarTexture;
 static Texture2D gFrontCarTextureLeft;
 static Texture2D gFrontCarTextureRight;
@@ -179,12 +178,17 @@ private:
         float angle = body->GetRotation();
         float angleDeg = angle * RAD2DEG;
 
+        // --- CÁMARA (offset pantalla) ---
+        ModuleGame* game = (ModuleGame*)listener;
+        float camX = game->App->renderer->camera.x;
+        float camY = game->App->renderer->camera.y;
+
         float scale = 0.05f;
 
         // ===== CARROCERÍA =====
         Rectangle srcBody = { 0, 0, (float)bodyTexture.width, (float)bodyTexture.height };
         Rectangle dstBody = {
-            (float)x, (float)y,
+            (float)x + camX, (float)y + camY,
             bodyTexture.width * scale,
             bodyTexture.height * scale
         };
@@ -204,8 +208,8 @@ private:
         float sinA = sinf(angle);
 
         Vector2 frontPos;
-        frontPos.x = x + cosA * forwardOffset;
-        frontPos.y = y + sinA * forwardOffset;
+        frontPos.x = (float)x + camX + cosA * forwardOffset; 
+        frontPos.y = (float)y + camY + sinA * forwardOffset;  
 
         Rectangle srcFront = { 0, 0, (float)frontTex->width, (float)frontTex->height };
         Rectangle dstFront = {
@@ -230,13 +234,17 @@ private:
     float speedCar = 0.0f;
     float steeringVisual = 0.0f;
 
-    const float acceleration = 0.005f;
-    const float braking = 0.05f;
-    const float maxSpeed = 0.5f;
-    const float moveFactor = 4.0f;
-    const float baseTurnSpeedDeg = 2.0f;
-    const float maxSteerVisualDeg = 15.0f;
-    const float steerVisualSpeed = 3.0f;
+    const float acceleration = 0.0015f;
+    const float braking = 0.020f;
+    const float maxSpeed = 2.2f;
+
+    const float moveFactor = 2.0f;
+
+    const float baseTurnSpeedDeg = 0.35f;
+
+    const float maxSteerVisualDeg = 12.0f;
+    const float steerVisualSpeed = 1.5f;
+
 };
 
 // =====================================================================
@@ -271,7 +279,7 @@ bool ModuleGame::Start()
 
     App->renderer->camera.x = App->renderer->camera.y = 0;
 
-    // (Opcional) mapa, por ahora no lo dibujas
+    //mapa
     mapaMontmelo = LoadTexture("Assets/mapa_montmelo.png");
 
     // Texturas del coche
@@ -286,8 +294,8 @@ bool ModuleGame::Start()
 
     // Coche jugador
     car = new Box(App->physics,
-        SCREEN_WIDTH / 2,
-        SCREEN_HEIGHT / 2,
+        10779,
+        5460,
         this,
         carTexture,
         gFrontCarTexture,
@@ -295,7 +303,12 @@ bool ModuleGame::Start()
 
     entities.emplace_back(car);
 
+    b2Vec2 pos = car->body->body->GetPosition();
+    car->body->body->SetTransform(pos, PI);
+
     car->body->body->SetFixedRotation(true);
+
+
 
     // Coche IA
     aiCar = new Box(App->physics,
@@ -309,12 +322,26 @@ bool ModuleGame::Start()
     entities.emplace_back(aiCar);
 
     car->body->body->SetFixedRotation(true);
+    aiCar->body->body->SetFixedRotation(true); 
 
-    // Checkpoints (los tuyos)
+    // Checkpoints 
     // X Y ANCHURA ALTURA
-    checkP1 = App->physics->CreateRectangleSensor(300, 300, 80, 40);  checkP1->listener = this;
-    checkP2 = App->physics->CreateRectangleSensor(800, 300, 80, 40);  checkP2->listener = this;
-    checkP3 = App->physics->CreateRectangleSensor(800, 600, 80, 40);  checkP3->listener = this;
+ // ===== CHECKPOINTS CIRCUITO MONTMELÓ =====
+
+// Línea de salida / meta
+    checkP1 = App->physics->CreateRectangleSensor(
+        10779,   // X
+        5460,    // Y
+        200,     // ancho (cruza toda la pista)
+        80       
+    );
+    checkP1->listener = this;
+
+    checkP2 = App->physics->CreateRectangleSensor(11500, 5200, 200, 80);
+    checkP2->listener = this;
+    checkP3 = App->physics->CreateRectangleSensor(9800, 5800, 200, 80);
+    checkP3->listener = this;
+
 
     // Reset contadores
     lapCount = 0;
@@ -341,35 +368,29 @@ bool ModuleGame::CleanUp()
 
     return true;
 }
+//1
 
 update_status ModuleGame::Update()
 {
-    // Update camera to follow player car
+    constexpr float MAP_SCALE = 1.0f;
+
+    // Posición del coche 
+    int carPx = 0, carPy = 0;
     if (car != nullptr)
-    {
-        int carPx, carPy;
         car->body->GetPhysicPosition(carPx, carPy);
+    float carAngle = car->body->GetRotation() * RAD2DEG;
 
-        // Camera follows player, keeping them centered on screen
-        // MAP_SCALE determines the zoom level (higher = more zoomed in)
-        constexpr float MAP_SCALE = 4.0f;
-        App->renderer->camera.x = (float)SCREEN_WIDTH * 0.5f - (float)carPx;
-        App->renderer->camera.y = (float)SCREEN_HEIGHT * 0.5f - (float)carPy;
-    }
 
-    // Draw map background at fixed screen position (no camera offset)
-    Rectangle map_src = { 0, 0, (float)mapaMontmelo.width, (float)mapaMontmelo.height };
-    Rectangle map_dst = { 0, 0, (float)mapaMontmelo.width, (float)mapaMontmelo.height };
-    DrawTexturePro(mapaMontmelo, map_src, map_dst, { 0, 0 }, 0.0f, WHITE);
+    // Cámara offset para centrar el coche
+    App->renderer->camera.x = (float)SCREEN_WIDTH * 0.5f - (float)carPx * MAP_SCALE;
+    App->renderer->camera.y = (float)SCREEN_HEIGHT * 0.5f - (float)carPy * MAP_SCALE;
 
     float cam_x = App->renderer->camera.x;
     float cam_y = App->renderer->camera.y;
 
-    // Circuito simple - apply camera offset to world objects
-    DrawRectangle((int)(0 + cam_x), (int)(0 + cam_y), SCREEN_WIDTH, 20, RED);
-    DrawRectangle((int)(0 + cam_x), (int)(SCREEN_HEIGHT - 20 + cam_y), SCREEN_WIDTH, 20, RED);
-    DrawRectangle((int)(0 + cam_x), (int)(0 + cam_y), 20, SCREEN_HEIGHT, RED);
-    DrawRectangle((int)(SCREEN_WIDTH - 20 + cam_x), (int)(0 + cam_y), 20, SCREEN_HEIGHT, RED);
+    // Dibuja el MAPA como mundo
+    Vector2 mapPos = { cam_x, cam_y };
+    DrawTextureEx(mapaMontmelo, mapPos, 0.0f, MAP_SCALE, WHITE);
 
     int trackHeight = 60;
     int trackY = SCREEN_HEIGHT / 2 - trackHeight / 2;
@@ -390,8 +411,13 @@ update_status ModuleGame::Update()
     DrawText(TextFormat("AI LAPS: %d", aiLapCount), 30, 110, 20, BLACK);
     DrawText(TextFormat("AI CP: %d/3", aiNextCheckpoint - 1), 30, 140, 20, BLACK);
 
+    DrawText(TextFormat("CAR X: %d", carPx), 30, 180, 20, WHITE);
+    DrawText(TextFormat("CAR Y: %d", carPy), 30, 210, 20, WHITE);
+    DrawText(TextFormat("CAR ANGLE: %.2f", carAngle), 30, 240, 20, WHITE);
+
     return UPDATE_CONTINUE;
 }
+
 
 void ModuleGame::OnCollision(PhysBody* bodyA, PhysBody* bodyB)
 {
@@ -419,7 +445,6 @@ void ModuleGame::OnCollision(PhysBody* bodyA, PhysBody* bodyB)
             App->audio->PlayFx(bonus_fx);
         }
     }
-
     // -------- IA --------
     if (hitAI)
     {
