@@ -48,9 +48,9 @@ public:
     uint32 bonus_fx = 0;
 
     // ---------- GASOLINE ----------
-    float gasoline = 1000000.0f;
-    const int max_gasoline = 1000000;
-    const float gasoline_drain_rate = 16.5f;
+    float gasoline = 100.0f;
+    const int max_gasoline = 100;
+    const float gasoline_drain_rate = 0.5f;
 
     // ---------- DEBUG ----------
     struct DebugPoint

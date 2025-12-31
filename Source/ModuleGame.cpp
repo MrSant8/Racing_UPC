@@ -10,6 +10,8 @@
 #include "raylib.h"
 #include <cmath>
 #include <algorithm>
+#include <cstdlib>
+#include <ctime>
 
 static Texture2D gFrontCarTexture;
 static Texture2D gFrontCarTextureLeft;
@@ -131,8 +133,8 @@ private:
         forwardInput = 0.0f;
         steeringInput = 0.0f;
 
-        if (IsKeyDown(KEY_W)) forwardInput = 1.0f;
-        if (IsKeyDown(KEY_S)) forwardInput = -1.0f;
+        if (IsKeyDown(KEY_W)) forwardInput = 1.1f;
+        if (IsKeyDown(KEY_S)) forwardInput = -1.1f;
         if (IsKeyDown(KEY_A)) steeringInput = -1.0f;
         if (IsKeyDown(KEY_D)) steeringInput = 1.0f;
     }
@@ -140,8 +142,14 @@ private:
     // ---------------------- IA SIMPLE: seguir checkP1->checkP2->... ----------------------
     void UpdateAI()
     {
-        forwardInput = 1.0f;
         steeringInput = 0.0f;
+
+        // Small random chance (approx 1%) the AI will slow down / reverse
+        int r = std::rand() % 100 + 1; // 1..100
+        if (r == 1)
+            forwardInput = -10.0f;
+        else
+            forwardInput = 1.0f;
 
         int x, y;
         body->GetPhysicPosition(x, y);
@@ -363,7 +371,7 @@ private:
 
     const float acceleration = 0.115f;
     const float braking = 0.020f;
-    const float maxSpeed = 10.0f;
+    const float maxSpeed = 12.0f;
 
     const float moveFactor = 2.0f;
     const float baseTurnSpeedDeg = 0.35f;
@@ -408,6 +416,9 @@ bool ModuleGame::Start()
     bonus_fx = App->audio->LoadFx("Assets/bonus.wav");
 
     entities.clear();
+
+    // seed randomness for AI behavior
+    std::srand((unsigned)std::time(nullptr));
 
     // Coche jugador
     car = new Box(App->physics,
