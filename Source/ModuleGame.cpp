@@ -240,9 +240,24 @@ private:
             const float stop_threshold = 0.05f;
             if (insideBrown && fabsf(speedCar) < stop_threshold && forwardInput == 0.0f)
             {
-                // OJO: esto depende de que gasolina exista en ModuleGame (como en tu código original)
                 game->gasoline += 20.0f * dt;
                 if (game->gasoline > (float)game->max_gasoline) game->gasoline = (float)game->max_gasoline;
+
+                // Play refueling FX once when starting to refuel
+                if (!game->refueling)
+                {
+                    game->refueling = true;
+                    if (game->App && game->App->audio && game->gasoline_fx != 0)
+                    {
+                        game->App->audio->PlayFx(game->gasoline_fx);
+                    }
+                }
+            }
+            else
+            {
+                // if we leave the brown area or start moving, reset refueling flag
+                if (game->refueling)
+                    game->refueling = false;
             }
         }
         // ---- ACELERAR / FRENAR ----
@@ -449,6 +464,10 @@ bool ModuleGame::Start()
     gFrontCarTextureRight = LoadTexture("Assets/f1_front_car_Right.png");
 
     bonus_fx = App->audio->LoadFx("Assets/bonus.wav");
+    gasoline_fx = App->audio->LoadFx("Assets/f1-radio-box-box.mp3");
+    motor_down_fx = App->audio->LoadFx("Assets/motor_down.mp3");
+    countdown_beep_fx = App->audio->LoadFx("Assets/countdown_beep.mp3");
+    countdown_end_beep_fx = App->audio->LoadFx("Assets/countdown_end_beep.mp3");
 
     entities.clear();
 
@@ -458,6 +477,13 @@ bool ModuleGame::Start()
     // Initialize pre-start screen and countdown (countdown starts after ENTER)
     sPreStartScreen = true;
     sStartCountdownFrames = 0;
+
+    // Play pre-start music (looping handled by ModuleAudio update)
+    if (App->audio)
+    {
+        bool ok = App->audio->PlayMusic("Assets/Formula 1 Theme.mp3");
+        if (!ok) LOG("Warning: pre-start music failed to play");
+    }
 
     // Coche jugador
     car = new Box(App->physics,
@@ -745,30 +771,49 @@ update_status ModuleGame::Update()
     // If pre-start screen active, draw controls and wait for ENTER to begin countdown
     if (sPreStartScreen)
     {
-        DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, BLACK);
+        DrawRectangle(0,0, SCREEN_WIDTH, SCREEN_HEIGHT, BLACK);
 
-        int leftX = 60;
-        int startY = 120;
-        int lineSpacing = 28;
-        int fs = 22;
+        int leftX =60;
+        int startY =120;
+        int lineSpacing =28;
+        int fs =22;
 
         DrawText("W to move forward", leftX, startY, fs, WHITE);
-        DrawText("S to move backwards", leftX, startY + lineSpacing * 1, fs, WHITE);
-        DrawText("A and D to rotate left and right", leftX, startY + lineSpacing * 2, fs, WHITE);
-        DrawText("Space to stop", leftX, startY + lineSpacing * 3, fs, WHITE);
-        DrawText("Don't forget to stop on the pitch stops (brown rectangles) to recharge your gasoline.", leftX, startY + lineSpacing * 5, 18, WHITE);
-        DrawText("If you run out of gasoline you won't be able to move!", leftX, startY + lineSpacing * 7, 18, WHITE);
+        DrawText("S to move backwards", leftX, startY + lineSpacing *1, fs, WHITE);
+        DrawText("A and D to rotate left and right", leftX, startY + lineSpacing *2, fs, WHITE);
+        DrawText("Space to stop", leftX, startY + lineSpacing *3, fs, WHITE);
+        DrawText("Don't forget to stop on the pitch stops (brown rectangles) to recharge your gasoline.", leftX, startY + lineSpacing *5,18, WHITE);
+        DrawText("If you run out of gasoline you won't be able to move!", leftX, startY + lineSpacing *7,18, WHITE);
 
         const char* rightMsg = "PRESS ENTER TO START";
-        int fsRight = 30;
+        int fsRight =30;
         int textW = MeasureText(rightMsg, fsRight);
-        DrawText(rightMsg, (SCREEN_WIDTH - textW) / 2 + 300, SCREEN_HEIGHT / 2 + 100, fsRight, WHITE);
+        DrawText(rightMsg, (SCREEN_WIDTH - textW) /2 +300, SCREEN_HEIGHT /2 +100, fsRight, WHITE);
 
         if (IsKeyPressed(KEY_ENTER))
         {
             // Start countdown
             sPreStartScreen = false;
-            sStartCountdownFrames = 90; // 3 seconds @30fps
+            sStartCountdownFrames =90; //3 seconds @30fps
+
+            // Stop pre-start music
+            if (App->audio)
+            {
+                App->audio->StopMusic();
+            }
+
+            // Play initial countdown beep when starting countdown
+            if (App->audio && countdown_beep_fx !=0)
+            {
+                App->audio->PlayFx(countdown_beep_fx);
+            }
+        }
+
+        // Ensure motor sound is stopped while on pre-start screen
+        if (App->audio && motorPlaying)
+        {
+            App->audio->StopMotor();
+            motorPlaying = false;
         }
 
         return UPDATE_CONTINUE;
@@ -784,6 +829,17 @@ update_status ModuleGame::Update()
         char buf[8];
         std::snprintf(buf, sizeof(buf), "%d", number);
 
+        // Play tick FX when number changes to 2 or 1
+        static int lastCountdownNumber = 0;
+        if (lastCountdownNumber != number)
+        {
+            lastCountdownNumber = number;
+            if ((number == 2 || number == 1) && countdown_beep_fx != 0)
+            {
+                App->audio->PlayFx(countdown_beep_fx);
+            }
+        }
+
         int fontSize = 140;
         int textW = MeasureText(buf, fontSize);
         DrawText(buf, (SCREEN_WIDTH - textW) / 2, (SCREEN_HEIGHT - fontSize) / 2, fontSize, WHITE);
@@ -796,6 +852,9 @@ update_status ModuleGame::Update()
             float now = (float)GetTime();
             sPlayerLapStart = now;
             sAiLapStart.assign(aiCars.size(), now);
+            // Play end beep
+            if (countdown_end_beep_fx != 0)
+                App->audio->PlayFx(countdown_end_beep_fx);
         }
 
         return UPDATE_CONTINUE;
@@ -908,35 +967,42 @@ update_status ModuleGame::Update()
         if (IsKeyPressed(KEY_R))
         {
             // Reinicia contadores
-            lapCount = 0;
-            nextCheckpoint = 0;
+            lapCount =0;
+            nextCheckpoint =0;
 
             // Reinicia IAs
-            for (int i = 0; i < (int)aiLaps.size(); ++i)
+            for (int i =0; i < (int)aiLaps.size(); ++i)
             {
-                aiLaps[i] = 0;
-                aiNextCP[i] = 0;
+                aiLaps[i] =0;
+                aiNextCP[i] =0;
             }
 
             // Reinicia timers
             sPlayerLapStart = (float)GetTime();
-            sPlayerLapCurrent = 0.0f;
-            sPlayerLapLast = 0.0f;
-            sPlayerLapBest = 999999.0f;
+            sPlayerLapCurrent =0.0f;
+            sPlayerLapLast =0.0f;
+            sPlayerLapBest =999999.0f;
 
             sAiLapStart.assign(aiCars.size(), (float)GetTime());
-            sAiLapCurrent.assign(aiCars.size(), 0.0f);
-            sAiLapLast.assign(aiCars.size(), 0.0f);
-            sAiLapBest.assign(aiCars.size(), 999999.0f);
+            sAiLapCurrent.assign(aiCars.size(),0.0f);
+            sAiLapLast.assign(aiCars.size(),0.0f);
+            sAiLapBest.assign(aiCars.size(),999999.0f);
 
             // Reinicia estado end
             sRaceFinished = false;
             sAiWon = false;
             sPlayerWon = false;
-            sEndTime = 0.0f;
+            sEndTime =0.0f;
 
             // (Opcional pero recomendado) Reset gasolina
             gasoline = (float)max_gasoline;
+
+            // Re-play pre-start music when restarting the scene
+            if (App->audio)
+            {
+                bool ok = App->audio->PlayMusic("Assets/Formula 1 Theme.mp3");
+                if (!ok) LOG("Warning: pre-start music failed to play on restart");
+            }
 
             // Recolocar coches (mismo spawn que Start)
             if (car && car->body && car->body->body)
@@ -958,6 +1024,32 @@ update_status ModuleGame::Update()
     // Actualizar entidades
     for (PhysicEntity* entity : entities)
         entity->Update();
+
+    // Motor sound: play while W or S is held
+    bool wOrS = IsKeyDown(KEY_W) || IsKeyDown(KEY_S);
+    if (wOrS)
+    {
+        if (!motorPlaying && App->audio)
+        {
+            if (App->audio->PlayMotor("Assets/motor_sound.mp3"))
+            {
+                motorPlaying = true;
+            }
+        }
+    }
+    else
+    {
+        if (motorPlaying && App->audio)
+        {
+            App->audio->StopMotor();
+            motorPlaying = false;
+            // Play motor-down FX once when motor just stopped
+            if (motor_down_fx !=0)
+            {
+                App->audio->PlayFx(motor_down_fx);
+            }
+        }
+    }
 
     // ====================== HUD LEGIBLE ======================
     int hudX = 20, hudY = 20, hudW = 460, hudH = 300;

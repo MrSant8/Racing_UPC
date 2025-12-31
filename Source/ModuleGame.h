@@ -46,6 +46,10 @@ public:
     Texture2D carTexture{};
     Texture2D mapaMontmelo{};
     uint32 bonus_fx = 0;
+    uint32 gasoline_fx = 0;
+    uint32 motor_down_fx = 0; // FX to play when motor stops
+    uint32 countdown_beep_fx = 0; // countdown tick
+    uint32 countdown_end_beep_fx = 0; // countdown end
 
     // ---------- GASOLINE ----------
     float gasoline = 100.0f;
@@ -68,4 +72,10 @@ public:
     bool ray_on = false;
 
     std::set<std::set<PhysicEntity*>> collidingEntities;
+
+    // Track whether player is currently refueling (to play FX once)
+    bool refueling = false;
+
+    // Track motor sound playing state (PlayMotor / StopMotor)
+    bool motorPlaying = false;
 };
