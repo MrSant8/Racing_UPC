@@ -31,6 +31,16 @@ public:
     // ---------- COCHES ----------
     Box* car = nullptr;        // jugador
     Box* aiCar = nullptr;      // IA
+    Box* aiCar2 = nullptr;      // IA
+    Box* aiCar3 = nullptr;      // IA
+    Box* aiCar4 = nullptr;      // IA
+    Box* aiCar5 = nullptr;      // IA
+    Box* aiCar6 = nullptr;      // IA
+    Box* aiCar7 = nullptr;      // IA
+    Box* aiCar8 = nullptr;      // IA
+    Box* aiCar9 = nullptr;      // IA
+    Box* aiCar10 = nullptr;      // IA
+    Box* aiCar11 = nullptr;      // IA
 
     // ---------- CHECKPOINTS ----------
     // Checkpoints (sensores)
@@ -50,8 +60,8 @@ public:
     uint32 bonus_fx;
 
     // ---------- GASOLINE SYSTEM ----------
-    float gasoline =1000.0f;
-    const int max_gasoline = 1000;
+    float gasoline =1000000.0f;
+    const int max_gasoline = 1000000;
     const float gasoline_drain_rate = 16.5f;  // units per second (increased for visibility)
 
     // ---------- DEBUG / OTROS ----------
