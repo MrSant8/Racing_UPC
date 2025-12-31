@@ -37,6 +37,9 @@ static bool sAiWon = false;
 static float sEndTime = 0.0f;      
 static const float kEndDelay = 3.0f; 
 
+// ===== START COUNTDOWN (frames @30 FPS ->90 frames =3s) =====
+static int sStartCountdownFrames = 90;
+
 static void FormatTime(float t, char* out, int outSize)
 {
     if (t < 0.0f) t = 0.0f;
@@ -449,6 +452,9 @@ bool ModuleGame::Start()
     // seed randomness for AI behavior
     std::srand((unsigned)std::time(nullptr));
 
+    // Initialize start countdown (90 frames @30fps =3s)
+    sStartCountdownFrames = 90;
+
     // Coche jugador
     car = new Box(App->physics,
         10779,
@@ -728,6 +734,24 @@ update_status ModuleGame::Update()
     }
     else
     {
+        return UPDATE_CONTINUE;
+    }
+
+    // If start countdown still running, draw countdown and skip the rest
+    if (sStartCountdownFrames > 0)
+    {
+        // Draw a simple full-screen countdown
+        DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, Color{ 0, 0, 0, 255 });
+
+        int number = (sStartCountdownFrames + 29) / 30; // 90->3, 60->2, 30->1
+        char buf[8];
+        std::snprintf(buf, sizeof(buf), "%d", number);
+
+        int fontSize = 140;
+        int textW = MeasureText(buf, fontSize);
+        DrawText(buf, (SCREEN_WIDTH - textW) / 2, (SCREEN_HEIGHT - fontSize) / 2, fontSize, WHITE);
+
+        sStartCountdownFrames--;
         return UPDATE_CONTINUE;
     }
 
