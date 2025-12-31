@@ -6,7 +6,7 @@
 - Large-scale circuit map (inspired by Montmeló)
 - Checkpoint system with lap counting
 - Camera that follows the player
-- Gasoline system affecting acceleration
+- Gasoline resource managment
 - Debug tools:
   - Save car coordinates with a key
   - Visualize checkpoints and distances
@@ -26,7 +26,8 @@
 - **W** – Accelerate  
 - **S** – Brake / Reverse  
 - **A** – Turn left  
-- **D** – Turn right  
+- **D** – Turn right
+- **SPACE** – Stop
 
 ---
 
