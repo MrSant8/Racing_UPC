@@ -976,8 +976,12 @@ void ModuleGame::OnCollision(PhysBody* bodyA, PhysBody* bodyB)
                 if (aiNextCP[i] >= (int)checkpoints.size())
                 {
                     aiNextCP[i] = 0;
-                    aiLaps[i]++;
-
+                    aiLaps[i]++;   
+                    if (!sAiWon && aiLaps[i] >= kMaxLaps)
+                    {
+                        sAiWon = true;
+                        sEndTime = (float)GetTime();
+                    }
                     // ===== TIEMPOS IA =====
                     if (i < (int)sAiLapStart.size())
                     {
