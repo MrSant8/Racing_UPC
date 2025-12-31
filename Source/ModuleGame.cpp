@@ -33,6 +33,11 @@ static std::vector<float> sAiLapCurrent;
 static std::vector<float> sAiLapLast;
 static std::vector<float> sAiLapBest;
 
+// ===== END GAME STATE =====
+static bool sAiWon = false;
+static float sEndTime = 0.0f;      
+static const float kEndDelay = 3.0f; 
+
 static void FormatTime(float t, char* out, int outSize)
 {
     if (t < 0.0f) t = 0.0f;
@@ -707,50 +712,50 @@ update_status ModuleGame::Update()
     }
 
     // ===== GUARDAR COORDENADAS CON TECLA =====
-    if (IsKeyPressed(KEY_P))
-    {
-        DebugPoint pt;
-        pt.x = carPx;
-        pt.y = carPy;
-        pt.angle = carAngle;
+    //if (IsKeyPressed(KEY_P))
+    //{
+    //    DebugPoint pt;
+    //    pt.x = carPx;
+    //    pt.y = carPy;
+    //    pt.angle = carAngle;
 
-        savedPoints.push_back(pt);
-        LOG("SAVED: X=%d Y=%d A=%.1f (total=%d)", pt.x, pt.y, pt.angle, (int)savedPoints.size());
-    }
+    //    savedPoints.push_back(pt);
+    //    LOG("SAVED: X=%d Y=%d A=%.1f (total=%d)", pt.x, pt.y, pt.angle, (int)savedPoints.size());
+    //}
 
-    // O = exportar a archivo cpData.txt
-    if (IsKeyPressed(KEY_O))
-    {
-        std::ofstream file("cpData.txt");
+    //// O = exportar a archivo cpData.txt
+    //if (IsKeyPressed(KEY_O))
+    //{
+    //    std::ofstream file("cpData.txt");
 
-        if (!file.is_open())
-        {
-            LOG("ERROR: no se pudo crear cpData.txt");
-        }
-        else
-        {
-            file << "std::vector<CheckpointData> cpData = {\n";
+    //    if (!file.is_open())
+    //    {
+    //        LOG("ERROR: no se pudo crear cpData.txt");
+    //    }
+    //    else
+    //    {
+    //        file << "std::vector<CheckpointData> cpData = {\n";
 
-            for (int i = 0; i < (int)savedPoints.size(); ++i)
-            {
-                const DebugPoint& p = savedPoints[i];
+    //        for (int i = 0; i < (int)savedPoints.size(); ++i)
+    //        {
+    //            const DebugPoint& p = savedPoints[i];
 
-                int w = 300;
-                int h = 120;
+    //            int w = 300;
+    //            int h = 120;
 
-                float a = fmodf(fabsf(p.angle), 180.0f);
-                if (a > 45.0f && a < 135.0f) { w = 120; h = 300; }
+    //            float a = fmodf(fabsf(p.angle), 180.0f);
+    //            if (a > 45.0f && a < 135.0f) { w = 120; h = 300; }
 
-                file << "    {" << p.x << ", " << p.y << ", " << w << ", " << h << "}, // "
-                    << (i < 10 ? "0" : "") << i << "  A=" << p.angle << "\n";
-            }
+    //            file << "    {" << p.x << ", " << p.y << ", " << w << ", " << h << "}, // "
+    //                << (i < 10 ? "0" : "") << i << "  A=" << p.angle << "\n";
+    //        }
 
-            file << "};\n";
-            file.close();
+    //        file << "};\n";
+    //        file.close();
 
-            LOG("OK: cpData.txt generado. Copia y pega su contenido en Start().");
-        }
-    }
+    //        LOG("OK: cpData.txt generado. Copia y pega su contenido en Start().");
+    //    }
+    //}
 
     // Cámara offset para centrar el coche
     App->renderer->camera.x = (float)SCREEN_WIDTH * 0.5f - (float)carPx * MAP_SCALE;
@@ -780,7 +785,7 @@ update_status ModuleGame::Update()
         entity->Update();
 
     // ====================== HUD LEGIBLE ======================
-    int hudX = 20, hudY = 20, hudW = 460, hudH = 210;
+    int hudX = 20, hudY = 20, hudW = 460, hudH = 300;
     DrawRectangle(hudX, hudY, hudW, hudH, Color{ 0, 0, 0, 190 });
     DrawRectangleLines(hudX, hudY, hudW, hudH, WHITE);
 
@@ -882,34 +887,34 @@ update_status ModuleGame::Update()
         );
     }
 
-    // ===== MOSTRAR LISTA DE PUNTOS GUARDADOS =====
-    int startY = 280;
-    DrawText("SAVED POINTS (press P):", 30, startY, 20, WHITE);
+    //// ===== MOSTRAR LISTA DE PUNTOS GUARDADOS =====
+    //int startY = 280;
+    //DrawText("SAVED POINTS (press P):", 30, startY, 20, WHITE);
 
-    int lineY = startY + 30;
-    for (int i = (int)savedPoints.size() - 1; i >= 0; --i)
-    {
-        const DebugPoint& pt = savedPoints[i];
-        DrawText(TextFormat("%02d) X:%d Y:%d A:%.1f",
-            i, pt.x, pt.y, pt.angle),
-            30, lineY, 18, WHITE);
+    //int lineY = startY + 30;
+    //for (int i = (int)savedPoints.size() - 1; i >= 0; --i)
+    //{
+    //    const DebugPoint& pt = savedPoints[i];
+    //    DrawText(TextFormat("%02d) X:%d Y:%d A:%.1f",
+    //        i, pt.x, pt.y, pt.angle),
+    //        30, lineY, 18, WHITE);
 
-        lineY += 22;
-        if (lineY > SCREEN_HEIGHT - 20) break;
-    }
+    //    lineY += 22;
+    //    if (lineY > SCREEN_HEIGHT - 20) break;
+    //}
 
-    // ===== DIST A SIGUIENTE CHECKPOINT (SAFE) =====
-    if (!checkpoints.empty())
-    {
-        if (nextCheckpoint < 0 || nextCheckpoint >= (int)checkpoints.size())
-            nextCheckpoint = 0;
+    //// ===== DIST A SIGUIENTE CHECKPOINT (SAFE) =====
+    //if (!checkpoints.empty())
+    //{
+    //    if (nextCheckpoint < 0 || nextCheckpoint >= (int)checkpoints.size())
+    //        nextCheckpoint = 0;
 
-        int cx = 0, cy = 0;
-        checkpoints[nextCheckpoint]->GetPhysicPosition(cx, cy);
+    //    int cx = 0, cy = 0;
+    //    checkpoints[nextCheckpoint]->GetPhysicPosition(cx, cy);
 
-        float dist = sqrtf((float)((cx - carPx) * (cx - carPx) + (cy - carPy) * (cy - carPy)));
-        DrawText(TextFormat("DIST: %.1f", dist), 30, 260, 20, WHITE);
-    }
+    //    float dist = sqrtf((float)((cx - carPx) * (cx - carPx) + (cy - carPy) * (cy - carPy)));
+    //    DrawText(TextFormat("DIST: %.1f", dist), 30, 260, 20, WHITE);
+    //}
 
     // ===== FIN A 3 VUELTAS =====
     if (!sRaceFinished && lapCount >= kMaxLaps)
