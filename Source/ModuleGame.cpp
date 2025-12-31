@@ -38,7 +38,10 @@ static float sEndTime = 0.0f;
 static const float kEndDelay = 3.0f; 
 
 // ===== START COUNTDOWN (frames @30 FPS ->90 frames =3s) =====
-static int sStartCountdownFrames = 90;
+// countdown frames are initially 0; they are set to 90 when player presses ENTER
+static int sStartCountdownFrames = 0;
+// Pre-start controls screen flag
+static bool sPreStartScreen = true;
 
 static void FormatTime(float t, char* out, int outSize)
 {
@@ -452,8 +455,9 @@ bool ModuleGame::Start()
     // seed randomness for AI behavior
     std::srand((unsigned)std::time(nullptr));
 
-    // Initialize start countdown (90 frames @30fps =3s)
-    sStartCountdownFrames = 90;
+    // Initialize pre-start screen and countdown (countdown starts after ENTER)
+    sPreStartScreen = true;
+    sStartCountdownFrames = 0;
 
     // Coche jugador
     car = new Box(App->physics,
@@ -688,12 +692,13 @@ bool ModuleGame::Start()
     sEndTime = 0.0f;
     sPlayerWon = false;
 
-    sPlayerLapStart = (float)GetTime();
+    // DO NOT start lap timers yet; they'll be set when countdown finishes
+    sPlayerLapStart = 0.0f;
     sPlayerLapCurrent = 0.0f;
     sPlayerLapLast = 0.0f;
     sPlayerLapBest = 999999.0f;
 
-    sAiLapStart.assign(aiCars.size(), (float)GetTime());
+    sAiLapStart.assign(aiCars.size(), 0.0f);
     sAiLapCurrent.assign(aiCars.size(), 0.0f);
     sAiLapLast.assign(aiCars.size(), 0.0f);
     sAiLapBest.assign(aiCars.size(), 999999.0f);
@@ -737,6 +742,38 @@ update_status ModuleGame::Update()
         return UPDATE_CONTINUE;
     }
 
+    // If pre-start screen active, draw controls and wait for ENTER to begin countdown
+    if (sPreStartScreen)
+    {
+        DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, BLACK);
+
+        int leftX = 60;
+        int startY = 120;
+        int lineSpacing = 28;
+        int fs = 22;
+
+        DrawText("W to move forward", leftX, startY, fs, WHITE);
+        DrawText("S to move backwards", leftX, startY + lineSpacing * 1, fs, WHITE);
+        DrawText("A and D to rotate left and right", leftX, startY + lineSpacing * 2, fs, WHITE);
+        DrawText("Space to stop", leftX, startY + lineSpacing * 3, fs, WHITE);
+        DrawText("Don't forget to stop on the pitch stops (brown rectangles) to recharge your gasoline.", leftX, startY + lineSpacing * 5, 18, WHITE);
+        DrawText("If you run out of gasoline you won't be able to move!", leftX, startY + lineSpacing * 7, 18, WHITE);
+
+        const char* rightMsg = "PRESS ENTER TO START";
+        int fsRight = 30;
+        int textW = MeasureText(rightMsg, fsRight);
+        DrawText(rightMsg, (SCREEN_WIDTH - textW) / 2 + 300, SCREEN_HEIGHT / 2 + 100, fsRight, WHITE);
+
+        if (IsKeyPressed(KEY_ENTER))
+        {
+            // Start countdown
+            sPreStartScreen = false;
+            sStartCountdownFrames = 90; // 3 seconds @30fps
+        }
+
+        return UPDATE_CONTINUE;
+    }
+
     // If start countdown still running, draw countdown and skip the rest
     if (sStartCountdownFrames > 0)
     {
@@ -752,6 +789,15 @@ update_status ModuleGame::Update()
         DrawText(buf, (SCREEN_WIDTH - textW) / 2, (SCREEN_HEIGHT - fontSize) / 2, fontSize, WHITE);
 
         sStartCountdownFrames--;
+
+        // When countdown finishes this frame, initialize lap timers to now
+        if (sStartCountdownFrames == 0)
+        {
+            float now = (float)GetTime();
+            sPlayerLapStart = now;
+            sAiLapStart.assign(aiCars.size(), now);
+        }
+
         return UPDATE_CONTINUE;
     }
 
@@ -788,7 +834,7 @@ update_status ModuleGame::Update()
     //    {
     //        file << "std::vector<CheckpointData> cpData = {\n";
 
-    //        for (int i = 0; i < (int)savedPoints.size(); ++i)
+    //        for (int i = 0; i < (int)savedPoints.size(); i++)
     //        {
     //            const DebugPoint& p = savedPoints[i];
 
