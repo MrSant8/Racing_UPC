@@ -22,12 +22,11 @@ static Texture2D gFrontCarTextureRight;
 // =====================================================
 static const int kMaxLaps = 3;
 static bool sRaceFinished = false;
-
 static float sPlayerLapStart = 0.0f;
 static float sPlayerLapCurrent = 0.0f;
 static float sPlayerLapLast = 0.0f;
 static float sPlayerLapBest = 999999.0f;
-
+static bool sPlayerWon = false;
 static std::vector<float> sAiLapStart;
 static std::vector<float> sAiLapCurrent;
 static std::vector<float> sAiLapLast;
@@ -681,6 +680,7 @@ bool ModuleGame::Start()
     sRaceFinished = false;
     sAiWon = false;
     sEndTime = 0.0f;
+    sPlayerWon = false;
 
     sPlayerLapStart = (float)GetTime();
     sPlayerLapCurrent = 0.0f;
@@ -807,6 +807,83 @@ update_status ModuleGame::Update()
     int startWidth = 40;
     DrawRectangle((int)(SCREEN_WIDTH / 2 - startWidth / 2 + cam_x), (int)(0 + cam_y),
         startWidth, SCREEN_HEIGHT, WHITE);
+
+    // ====================== END SCREEN (WIN/LOSE) ======================
+    if (sRaceFinished)
+    {
+        // Fondo oscuro
+        DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, Color{ 0, 0, 0, 220 });
+
+        const char* msg = sPlayerWon ? "WIN" : "LOSE";
+        int fontSize = 140;
+        int textW = MeasureText(msg, fontSize);
+
+        DrawText(msg,
+            (SCREEN_WIDTH - textW) / 2,
+            (SCREEN_HEIGHT - fontSize) / 2 - 40,
+            fontSize,
+            WHITE);
+
+        const char* msg2 = "PRESS R TO RESTART";
+        int fontSize2 = 30;
+        int textW2 = MeasureText(msg2, fontSize2);
+
+        DrawText(msg2,
+            (SCREEN_WIDTH - textW2) / 2,
+            (SCREEN_HEIGHT - fontSize2) / 2 + 120,
+            fontSize2,
+            WHITE);
+
+        // Reset con R
+        if (IsKeyPressed(KEY_R))
+        {
+            // Reinicia contadores
+            lapCount = 0;
+            nextCheckpoint = 0;
+
+            // Reinicia IAs
+            for (int i = 0; i < (int)aiLaps.size(); ++i)
+            {
+                aiLaps[i] = 0;
+                aiNextCP[i] = 0;
+            }
+
+            // Reinicia timers
+            sPlayerLapStart = (float)GetTime();
+            sPlayerLapCurrent = 0.0f;
+            sPlayerLapLast = 0.0f;
+            sPlayerLapBest = 999999.0f;
+
+            sAiLapStart.assign(aiCars.size(), (float)GetTime());
+            sAiLapCurrent.assign(aiCars.size(), 0.0f);
+            sAiLapLast.assign(aiCars.size(), 0.0f);
+            sAiLapBest.assign(aiCars.size(), 999999.0f);
+
+            // Reinicia estado end
+            sRaceFinished = false;
+            sAiWon = false;
+            sPlayerWon = false;
+            sEndTime = 0.0f;
+
+            // (Opcional pero recomendado) Reset gasolina
+            gasoline = (float)max_gasoline;
+
+            // Recolocar coches (mismo spawn que Start)
+            if (car && car->body && car->body->body)
+            {
+                b2Vec2 p = car->body->body->GetPosition();
+                // SetTransform recibe metros, pero tú estás spawneando por CreateRectangle(x,y) en píxeles.
+                // Si tu CreateRectangle ya convierte internamente, puedes volver a crear o usar el mismo patrón de Start:
+                // Aquí lo más seguro: volver a Start() si tu profe lo permite.
+            }
+
+            // MUY SENCILLO Y SEGURO: reinicia escena completa
+            CleanUp();
+            Start();
+        }
+
+        return UPDATE_CONTINUE;
+    }
 
     // Actualizar entidades
     for (PhysicEntity* entity : entities)
@@ -964,12 +1041,7 @@ update_status ModuleGame::Update()
 
         return UPDATE_CONTINUE; // mientras se ve el GAME OVER no cierres aún
     }
-    if (!sRaceFinished && lapCount >= kMaxLaps)
-    {
-        sRaceFinished = true;
-        return UPDATE_STOP;
-    }
-
+ 
     return UPDATE_CONTINUE;
 }
 
@@ -993,6 +1065,14 @@ void ModuleGame::OnCollision(PhysBody* bodyA, PhysBody* bodyB)
                 nextCheckpoint = 0;
                 lapCount++;
                 App->audio->PlayFx(bonus_fx);
+
+                if (!sRaceFinished && lapCount >= kMaxLaps)
+                {
+                    sPlayerWon = true;
+                    sAiWon = false;
+                    sRaceFinished = true;
+                    sEndTime = (float)GetTime();
+                }
 
                 // ===== TIEMPOS PLAYER =====
                 float now = (float)GetTime();
@@ -1024,11 +1104,14 @@ void ModuleGame::OnCollision(PhysBody* bodyA, PhysBody* bodyB)
                 {
                     aiNextCP[i] = 0;
                     aiLaps[i]++;   
-                    if (!sAiWon && aiLaps[i] >= kMaxLaps)
+                    if (!sRaceFinished && aiLaps[i] >= kMaxLaps)
                     {
                         sAiWon = true;
+                        sPlayerWon = false;
+                        sRaceFinished = true;
                         sEndTime = (float)GetTime();
                     }
+
                     // ===== TIEMPOS IA =====
                     if (i < (int)sAiLapStart.size())
                     {
