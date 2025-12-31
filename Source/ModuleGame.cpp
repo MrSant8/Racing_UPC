@@ -138,10 +138,20 @@ private:
         forwardInput = 0.0f;
         steeringInput = 0.0f;
 
+        // Space hard brake
+        if (IsKeyDown(KEY_SPACE))
+            hardBrake = true;
+        else
+            hardBrake = false;
+
         if (IsKeyDown(KEY_W)) forwardInput = 1.1f;
         if (IsKeyDown(KEY_S)) forwardInput = -1.1f;
         if (IsKeyDown(KEY_A)) steeringInput = -1.0f;
         if (IsKeyDown(KEY_D)) steeringInput = 1.0f;
+
+        // If hard braking, cancel forward input so we don't accelerate
+        if (hardBrake)
+            forwardInput = 0.0f;
     }
 
     // ---------------------- IA SIMPLE: seguir checkP1->checkP2->... ----------------------
@@ -230,7 +240,6 @@ private:
                 if (game->gasoline > (float)game->max_gasoline) game->gasoline = (float)game->max_gasoline;
             }
         }
-
         // ---- ACELERAR / FRENAR ----
         bool canAccelerate = true;
         if (!isAI) canAccelerate = (game->gasoline > 0.0f);
@@ -252,7 +261,22 @@ private:
         }
         else
         {
-            if (inputMoving && canAccelerate)
+            // Hard brake when player presses SPACE
+            const float hardBrakePower = 0.6f; // strong deceleration per frame
+            if (hardBrake)
+            {
+                if (speedCar > 0.0f)
+                {
+                    speedCar -= hardBrakePower;
+                    if (speedCar < 0.0f) speedCar = 0.0f;
+                }
+                else if (speedCar < 0.0f)
+                {
+                    speedCar += hardBrakePower;
+                    if (speedCar > 0.0f) speedCar = 0.0f;
+                }
+            }
+            else if (inputMoving && canAccelerate)
             {
                 if (forwardInput > 0.0f)
                 {
@@ -383,6 +407,8 @@ private:
 
     const float maxSteerVisualDeg = 12.0f;
     const float steerVisualSpeed = 1.5f;
+    bool hardBrake = false;
+
 };
 
 // =====================================================================
@@ -393,7 +419,6 @@ ModuleGame::ModuleGame(Application* app, bool start_enabled) : Module(app, start
 {
     ray_on = false;
     sensed = false;
-
     lapCount = 0;
     nextCheckpoint = 1;
 }
@@ -654,6 +679,8 @@ bool ModuleGame::Start()
 
     // ===== RESET TIMERS (STATIC) =====
     sRaceFinished = false;
+    sAiWon = false;
+    sEndTime = 0.0f;
 
     sPlayerLapStart = (float)GetTime();
     sPlayerLapCurrent = 0.0f;
@@ -697,6 +724,7 @@ update_status ModuleGame::Update()
     {
         car->body->GetPhysicPosition(carPx, carPy);
         carAngle = car->body->GetRotation() * RAD2DEG;
+
     }
     else
     {
@@ -917,6 +945,25 @@ update_status ModuleGame::Update()
     //}
 
     // ===== FIN A 3 VUELTAS =====
+    // ===== LOSE: si la IA ganó, mostrar GAME OVER y cerrar tras delay =====
+    if (sAiWon)
+    {
+        DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, Color{ 0, 0, 0, 220 });
+
+        const char* msg = "GAME OVER";
+        int fontSize = 120;
+        int textW = MeasureText(msg, fontSize);
+        DrawText(msg,
+            (SCREEN_WIDTH - textW) / 2,
+            (SCREEN_HEIGHT - fontSize) / 2,
+            fontSize,
+            WHITE);
+
+        if (((float)GetTime() - sEndTime) >= kEndDelay)
+            return UPDATE_STOP;
+
+        return UPDATE_CONTINUE; // mientras se ve el GAME OVER no cierres aún
+    }
     if (!sRaceFinished && lapCount >= kMaxLaps)
     {
         sRaceFinished = true;
